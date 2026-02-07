@@ -3,7 +3,7 @@ from flask_oidc import OpenIDConnect
 from flask import Flask, render_template, session
 import os
 from authentik_invite_app.config import settings
-from authentik_invite_app.authentik import authentik
+from authentik_invite_app.authentik import authentik, get_ttl_hash
 
 app = Flask(__name__)
 app.secret_key = os.urandom(32)
@@ -26,6 +26,7 @@ app.config.update(
         "OIDC_USER_INFO_ENABLED": True,
     }
 )
+
 oidc = OpenIDConnect(app)
 
 
@@ -35,7 +36,8 @@ def invite_create():
     username = session["oidc_auth_profile"].get("preferred_username")
     invite = authentik.check_user_invite(username)
     if not invite:
-        invite = authentik.generate_invite(username)
+        enrollment_flow_id = authentik.get_enrollment_flow_id(get_ttl_hash())
+        invite = authentik.generate_invite(username, enrollment_flow_id)
     return render_template(
         "invite_show.html.j2",
         token=invite.pk,
